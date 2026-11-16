@@ -19,15 +19,16 @@ FROM python:3.12-slim AS test
 
 WORKDIR /app
 
-# Copy source and test files
+# Copy the package metadata, source and test files
+COPY pyproject.toml README.md LICENSE ./
 COPY src/ ./src/
 COPY tests/ ./tests/
 COPY samples/ ./samples/
-COPY requirements.txt .
 
-# Install test dependencies and run tests
+# Run the tests, then build the wheel the production image installs
 RUN pip install --no-cache-dir pytest && \
-    python -m pytest tests/ -v --tb=short
+    python -m pytest tests/ -v --tb=short && \
+    pip wheel --no-cache-dir --no-deps --wheel-dir /dist .
 
 # ---- Stage 2: Production image ----
 # Minimal image with only the scanner code (no test dependencies)
@@ -38,8 +39,11 @@ RUN groupadd -r scanner && useradd -r -g scanner -d /app -s /sbin/nologin scanne
 
 WORKDIR /app
 
-# Copy only the scanner source code (no tests, no dev dependencies)
-COPY --from=test /app/src/ ./src/
+# Install the tested wheel (no tests, no dev dependencies)
+COPY --from=test /dist/ /tmp/dist/
+RUN pip install --no-cache-dir /tmp/dist/*.whl && rm -rf /tmp/dist
+
+# Sample apps, so the image can be tried without mounting a project
 COPY --from=test /app/samples/ ./samples/
 
 # Set ownership
@@ -50,7 +54,7 @@ USER scanner
 
 # Scanner entry point
 # The /scan directory is where users mount their Flutter project
-ENTRYPOINT ["python", "src/main.py"]
+ENTRYPOINT ["flutter-security-analyzer"]
 
 # Default: show help if no arguments provided
 CMD ["--help"]

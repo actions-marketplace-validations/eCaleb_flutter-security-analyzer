@@ -11,5 +11,6 @@ coverage-report
 .vscode
 .idea
 *.md
-LICENSE
-setup.py
+!README.md
+build
+dist

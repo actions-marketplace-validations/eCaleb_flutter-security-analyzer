@@ -1,9 +1,10 @@
 # Flutter Security Scanner - CI/CD Pipeline
 #
 # This workflow runs on every push and pull request to ensure:
-# 1. All unit tests pass across Python 3.9, 3.10, 3.11, and 3.12
-# 2. The scanner runs successfully against the sample vulnerable app
-# 3. Scan results are uploaded as workflow artifacts
+# 1. All unit tests pass across Python 3.10, 3.11, 3.12 and 3.13
+# 2. The package builds, passes twine check and installs from the wheel
+# 3. The scanner runs successfully against the sample vulnerable app
+# 4. Scan results are uploaded as workflow artifacts
 #
 # Author: Caleb Elebhose
 # Module: WB7103/WB7104 MSc Cybersecurity Project
@@ -26,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.10', '3.11', '3.12', '3.13']
 
     steps:
       - name: Checkout repository
@@ -84,27 +85,30 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install as a package and check the command works
+      - name: Build the package and check it is ready for PyPI
         run: |
-          pip install .
+          python -m pip install --upgrade pip build twine
+          python -m build
+          twine check --strict dist/*
+
+      - name: Install the built wheel and check the command works
+        run: |
+          pip install dist/*.whl
           flutter-security-analyzer --version
           flutter-security-analyzer samples/vulnerable_app.dart -f json -o /tmp/installed-scan.json || true
           test -s /tmp/installed-scan.json
 
       - name: Run scan on sample vulnerable app (Console)
-        working-directory: src
         run: |
-          python main.py ../samples/vulnerable_app.dart -f console -v || true
+          flutter-security-analyzer samples/vulnerable_app.dart -f console -v || true
 
       - name: Run scan on sample vulnerable app (JSON)
-        working-directory: src
         run: |
-          python main.py ../samples/vulnerable_app.dart -f json -o ../scan-results.json -v || true
+          flutter-security-analyzer samples/vulnerable_app.dart -f json -o scan-results.json -v || true
 
       - name: Run scan on sample vulnerable app (HTML)
-        working-directory: src
         run: |
-          python main.py ../samples/vulnerable_app.dart -f html -o ../scan-report.html -v || true
+          python -m flutter_security_analyzer samples/vulnerable_app.dart -f html -o scan-report.html -v || true
 
       - name: Display scan summary
         run: |

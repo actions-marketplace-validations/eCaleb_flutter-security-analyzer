@@ -11,9 +11,10 @@ from typing import Dict, List, Set, Union
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from flutter_security_analyzer import __version__
 from .config import ScannerConfig
-from patterns.pattern_registry import PatternRegistry
-from mappers.masvs_mapper import MasvsMapper
+from flutter_security_analyzer.patterns.pattern_registry import PatternRegistry
+from flutter_security_analyzer.mappers.masvs_mapper import MasvsMapper
 
 
 @dataclass
@@ -129,7 +130,7 @@ class SecurityScanner:
     4. Aggregating and returning results
     """
     
-    VERSION = "1.0.0"
+    VERSION = __version__
     
     # Rules that look for problems in project configuration rather than in
     # Dart code, mapped to the files they should read (relative to the

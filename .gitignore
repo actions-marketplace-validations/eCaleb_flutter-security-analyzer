@@ -38,3 +38,6 @@ results.json
 .claude/
 __pycache__/
 *.pyc
+# Python packaging output
+dist/
+*.egg-info/

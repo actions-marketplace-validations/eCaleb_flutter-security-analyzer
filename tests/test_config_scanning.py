@@ -20,8 +20,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'src'))
 
-from core.config import ScannerConfig  # noqa: E402
-from core.scanner import SecurityScanner  # noqa: E402
+from flutter_security_analyzer.core.config import ScannerConfig  # noqa: E402
+from flutter_security_analyzer.core.scanner import SecurityScanner  # noqa: E402
 
 
 MAIN_DART = "import 'package:flutter/material.dart';\n\nvoid main() => runApp(const SizedBox());\n"

@@ -8,8 +8,8 @@ import sys
 from typing import Optional
 from datetime import datetime
 
-from core.scanner import ScanResults
-from mappers.masvs_mapper import MasvsMapper
+from flutter_security_analyzer.core.scanner import ScanResults
+from flutter_security_analyzer.mappers.masvs_mapper import MasvsMapper
 
 
 class HtmlReporter:

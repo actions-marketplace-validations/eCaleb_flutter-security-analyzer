@@ -7,7 +7,7 @@ Outputs scan results to the console with colour formatting.
 import sys
 from typing import Optional
 
-from core.scanner import ScanResults
+from flutter_security_analyzer.core.scanner import ScanResults
 
 
 class ConsoleReporter:
