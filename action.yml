@@ -1,0 +1,182 @@
+# Flutter Security Analyzer GitHub Action
+#
+# Scans a Flutter or Dart project, writes the findings as SARIF and, by
+# default, uploads them to GitHub code scanning so they appear in the
+# Security tab and on pull requests.
+#
+# The scanner is installed from this action's own code, so pinning the
+# action to a release or commit also pins the scanner version. Inputs reach
+# the shell only through environment variables, never by expanding them into
+# scripts, so a crafted input cannot inject commands.
+#
+# Author: Caleb Elebhose
+
+name: Flutter Security Analyzer
+description: Scan Flutter and Dart code for security issues mapped to OWASP MASVS, with results in GitHub code scanning
+author: Caleb Elebhose
+
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  path:
+    description: Flutter project directory or Dart file to scan, relative to the repository root
+    required: false
+    default: '.'
+  severity:
+    description: Lowest severity to report (critical, high, medium, low or info)
+    required: false
+    default: low
+  masvs-categories:
+    description: Space-separated MASVS categories to scan, for example "STORAGE CRYPTO". Leave empty to scan all eight.
+    required: false
+    default: ''
+  config:
+    description: Path to a scanner configuration file
+    required: false
+    default: ''
+  sarif-file:
+    description: Where to write the SARIF report
+    required: false
+    default: flutter-security-analyzer.sarif
+  upload-sarif:
+    description: Upload the report to GitHub code scanning ("true" or "false"). Needs the security-events write permission.
+    required: false
+    default: 'true'
+  category:
+    description: Code scanning category for the upload. Give each scan its own category if one workflow scans several paths.
+    required: false
+    default: flutter-security-analyzer
+  fail-on:
+    description: Fail the step when findings at or above this severity are reported (critical, high, medium, low, info or never). Checked after the upload.
+    required: false
+    default: high
+
+outputs:
+  sarif-file:
+    description: Path to the SARIF report
+    value: ${{ steps.scan.outputs.sarif-file }}
+  findings:
+    description: Total number of findings reported
+    value: ${{ steps.scan.outputs.findings }}
+  critical:
+    description: Number of critical findings
+    value: ${{ steps.scan.outputs.critical }}
+  high:
+    description: Number of high findings
+    value: ${{ steps.scan.outputs.high }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      id: python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: '3.12'
+        update-environment: false
+
+    - name: Install Flutter Security Analyzer
+      id: install
+      shell: bash
+      env:
+        BASE_PYTHON: ${{ steps.python.outputs.python-path }}
+      run: |
+        venv="$RUNNER_TEMP/flutter-security-analyzer-venv"
+        "$BASE_PYTHON" -m venv "$venv"
+        if [ -x "$venv/bin/python" ]; then
+          venv_python="$venv/bin/python"
+        else
+          venv_python="$venv/Scripts/python.exe"
+        fi
+        "$venv_python" -m pip install --disable-pip-version-check --quiet "$GITHUB_ACTION_PATH"
+        "$venv_python" -m flutter_security_analyzer --version
+        echo "python=$venv_python" >> "$GITHUB_OUTPUT"
+
+    - name: Scan
+      id: scan
+      shell: bash
+      env:
+        FSA_PYTHON: ${{ steps.install.outputs.python }}
+        SCAN_PATH: ${{ inputs.path }}
+        SEVERITY: ${{ inputs.severity }}
+        CATEGORIES: ${{ inputs.masvs-categories }}
+        CONFIG: ${{ inputs.config }}
+        SARIF_FILE: ${{ inputs.sarif-file }}
+        FAIL_ON: ${{ inputs.fail-on }}
+      run: |
+        case "$FAIL_ON" in
+          critical|high|medium|low|info|never) ;;
+          *) echo "::error::fail-on must be critical, high, medium, low, info or never, not '$FAIL_ON'"; exit 1 ;;
+        esac
+
+        args=("$SCAN_PATH" --format sarif --output "$SARIF_FILE" --severity "$SEVERITY")
+        if [ -n "$CONFIG" ]; then
+          args+=(--config "$CONFIG")
+        fi
+        if [ -n "$CATEGORIES" ]; then
+          read -r -a categories <<< "$CATEGORIES"
+          args+=(--masvs-category "${categories[@]}")
+        fi
+
+        # The scanner exits 1 for high and 2 for critical findings, so judge
+        # success by whether a report was written, then apply fail-on later.
+        rm -f "$SARIF_FILE"
+        set +e
+        "$FSA_PYTHON" -m flutter_security_analyzer "${args[@]}"
+        set -e
+        if [ ! -s "$SARIF_FILE" ]; then
+          echo "::error::The scan did not produce a report. Check the path and inputs above."
+          exit 1
+        fi
+
+        "$FSA_PYTHON" - <<'PY'
+        import json
+        import os
+
+        order = ['info', 'low', 'medium', 'high', 'critical']
+        with open(os.environ['SARIF_FILE'], encoding='utf-8') as f:
+            results = json.load(f)['runs'][0]['results']
+
+        counts = {severity: 0 for severity in order}
+        for result in results:
+            severity = result.get('properties', {}).get('severity', 'medium')
+            counts[severity] = counts.get(severity, 0) + 1
+
+        fail_on = os.environ['FAIL_ON']
+        fail = fail_on != 'never' and any(
+            counts[severity] for severity in order[order.index(fail_on):]
+        )
+
+        with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8', newline='\n') as out:
+            out.write(f"sarif-file={os.environ['SARIF_FILE']}\n")
+            out.write(f"findings={len(results)}\n")
+            for severity in order:
+                out.write(f"{severity}={counts[severity]}\n")
+            out.write(f"fail={'true' if fail else 'false'}\n")
+
+        with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8', newline='\n') as summary:
+            summary.write('### Flutter Security Analyzer\n\n')
+            summary.write('| Severity | Findings |\n|---|---|\n')
+            for severity in reversed(order):
+                summary.write(f'| {severity.capitalize()} | {counts[severity]} |\n')
+            summary.write(f'\n**Total:** {len(results)}\n')
+        PY
+
+    - name: Upload results to GitHub code scanning
+      if: inputs.upload-sarif == 'true'
+      uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+      with:
+        sarif_file: ${{ steps.scan.outputs.sarif-file }}
+        category: ${{ inputs.category }}
+
+    - name: Check findings against fail-on
+      if: steps.scan.outputs.fail == 'true'
+      shell: bash
+      env:
+        FAIL_ON: ${{ inputs.fail-on }}
+        FINDINGS: ${{ steps.scan.outputs.findings }}
+      run: |
+        echo "::error::Flutter Security Analyzer reported findings at or above '$FAIL_ON' severity ($FINDINGS findings in total)."
+        exit 1

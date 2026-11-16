@@ -22,6 +22,7 @@ from flutter_security_analyzer.core.config import ScannerConfig
 from flutter_security_analyzer.reporters.console_reporter import ConsoleReporter
 from flutter_security_analyzer.reporters.json_reporter import JsonReporter
 from flutter_security_analyzer.reporters.html_reporter import HtmlReporter
+from flutter_security_analyzer.reporters.sarif_reporter import SarifReporter
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -48,7 +49,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         '-f', '--format',
         type=str,
-        choices=['console', 'json', 'html'],
+        choices=['console', 'json', 'html', 'sarif'],
         default='console',
         help='Output format (default: console)'
     )
@@ -97,7 +98,8 @@ def create_reporter(format_type: str, output_path: Optional[str]):
     reporters = {
         'console': ConsoleReporter,
         'json': JsonReporter,
-        'html': HtmlReporter
+        'html': HtmlReporter,
+        'sarif': SarifReporter
     }
     
     reporter_class = reporters.get(format_type, ConsoleReporter)
