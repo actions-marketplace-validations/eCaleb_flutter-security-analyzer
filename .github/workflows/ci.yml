@@ -5,6 +5,9 @@
 # 2. The package builds, passes twine check and installs from the wheel
 # 3. The scanner runs successfully against the sample vulnerable app
 # 4. Scan results are uploaded as workflow artifacts
+# 5. The GitHub Action works on Linux, macOS and Windows
+#
+# Actions are pinned to full commit SHAs.
 #
 # Author: Caleb Elebhose
 # Module: WB7103/WB7104 MSc Cybersecurity Project
@@ -17,6 +20,14 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
+
+permissions:
+  contents: read
+
+# A newer push to the same branch or pull request cancels the older run
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # ===========================================================
@@ -31,15 +42,17 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Cache pip dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('requirements.txt') }}
@@ -62,7 +75,7 @@ jobs:
 
       - name: Upload coverage report
         if: matrix.python-version == '3.12'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage-report
           path: coverage-report/
@@ -78,10 +91,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
 
@@ -136,7 +151,7 @@ jobs:
           fi
 
       - name: Upload scan results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: scan-results
           path: |
@@ -158,3 +173,65 @@ jobs:
               echo "::warning::Found $CRITICAL critical severity findings"
             fi
           fi
+
+  # ===========================================================
+  # Job 3: Run this repository's GitHub Action on each OS
+  # ===========================================================
+  action:
+    name: GitHub Action (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run the action on the sample apps
+        id: scan
+        uses: ./ # zizmor: ignore[self-repository] $/ is not supported by actionlint 1.7.12 yet
+        with:
+          path: samples
+          upload-sarif: 'false'
+          fail-on: never
+
+      - name: Check the action's outputs and report
+        shell: bash
+        env:
+          SARIF_FILE: ${{ steps.scan.outputs.sarif-file }}
+          FINDINGS: ${{ steps.scan.outputs.findings }}
+          CRITICAL: ${{ steps.scan.outputs.critical }}
+        run: |
+          echo "findings=$FINDINGS critical=$CRITICAL"
+          test -s "$SARIF_FILE"
+          test "$FINDINGS" -gt 0
+          test "$CRITICAL" -gt 0
+          grep -q '"version": "2.1.0"' "$SARIF_FILE"
+          grep -q '"uri": "samples/vulnerable_app.dart"' "$SARIF_FILE"
+          if grep -q '"uri": "samples\\\\' "$SARIF_FILE"; then
+            echo "::error::SARIF paths must use forward slashes"
+            exit 1
+          fi
+
+      - name: Run the action with fail-on set to critical
+        id: strict
+        continue-on-error: true
+        uses: ./ # zizmor: ignore[self-repository] $/ is not supported by actionlint 1.7.12 yet
+        with:
+          path: samples
+          upload-sarif: 'false'
+          fail-on: critical
+          sarif-file: strict.sarif
+
+      - name: Check fail-on stopped the step
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.strict.outcome }}
+        run: |
+          echo "outcome=$OUTCOME"
+          test "$OUTCOME" = failure
