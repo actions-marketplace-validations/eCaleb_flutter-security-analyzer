@@ -1,7 +1,7 @@
 # Flutter Security Scanner - CI/CD Pipeline
 #
 # This workflow runs on every push and pull request to ensure:
-# 1. All unit tests pass across Python 3.9, 3.10, 3.11, and 3.12
+# 1. All unit tests pass across Python 3.10, 3.11, 3.12 and 3.13
 # 2. The package builds, passes twine check and installs from the wheel
 # 3. The scanner runs successfully against the sample vulnerable app
 # 4. Scan results are uploaded as workflow artifacts
@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.10', '3.11', '3.12', '3.13']
 
     steps:
       - name: Checkout repository

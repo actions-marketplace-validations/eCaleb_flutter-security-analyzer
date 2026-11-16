@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Caleb Elebhose", email = "elebhosec@gmail.com" }]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = []
 keywords = ["flutter", "dart", "security", "scanner", "masvs", "owasp", "static-analysis"]
 classifiers = [
@@ -20,10 +20,10 @@ classifiers = [
     "Topic :: Security",
     "Topic :: Software Development :: Quality Assurance",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
 [project.optional-dependencies]

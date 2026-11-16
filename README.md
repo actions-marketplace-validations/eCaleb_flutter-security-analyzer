@@ -57,7 +57,7 @@ Only the check listed for a file is applied to it, and comment lines are ignored
 pip install flutter-security-analyzer
 ```
 
-This adds the `flutter-security-analyzer` command. The scanner has no runtime dependencies beyond the Python standard library (Python 3.9 or later).
+This adds the `flutter-security-analyzer` command. The scanner has no runtime dependencies beyond the Python standard library (Python 3.10 or later).
 
 To work on the code, install it from a clone in editable mode:
 
