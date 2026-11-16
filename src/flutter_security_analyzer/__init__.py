@@ -8,5 +8,5 @@ Author: Caleb Elebhose
 MSc Cybersecurity - University of Chester
 """
 
-__version__ = '1.0.0'
+__version__ = '1.0.1'
 __author__ = 'Caleb Elebhose'

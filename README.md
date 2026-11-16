@@ -1,7 +1,7 @@
 # Flutter Security Analyzer
 
 [![CI](https://github.com/eCaleb/flutter-security-analyzer/actions/workflows/ci.yml/badge.svg)](https://github.com/eCaleb/flutter-security-analyzer/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/eCaleb/flutter-security-analyzer/blob/main/LICENSE)
 
 A static analysis tool for detecting security vulnerabilities in Flutter/Dart applications with OWASP MASVS v2.1.0 compliance mapping.
 
@@ -23,7 +23,7 @@ This tool is developed as part of an MSc Cybersecurity final year project at the
 
 ## Sample Report
 
-![HTML report from scanning samples/vulnerable_app.dart](docs/images/sample-report.png)
+![HTML report from scanning samples/vulnerable_app.dart](https://raw.githubusercontent.com/eCaleb/flutter-security-analyzer/main/docs/images/sample-report.png)
 
 The HTML report from scanning `samples/vulnerable_app.dart`, which contains deliberate vulnerabilities: 47 findings across all 8 MASVS categories.
 
@@ -54,18 +54,18 @@ Only the check listed for a file is applied to it, and comment lines are ignored
 ## Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/eCaleb/flutter-security-analyzer.git
-cd flutter-security-analyzer
-
-# Install as a package, which adds the flutter-security-analyzer command
-pip install .
-
-# Optional: development dependencies (pytest, coverage, linters)
-pip install -r requirements.txt
+pip install flutter-security-analyzer
 ```
 
-The scanner has no runtime dependencies beyond the Python standard library (Python 3.9 or later). You can also run it straight from the source tree with `python src/main.py` instead of installing it.
+This adds the `flutter-security-analyzer` command. The scanner has no runtime dependencies beyond the Python standard library (Python 3.9 or later).
+
+To work on the code, install it from a clone in editable mode:
+
+```bash
+git clone https://github.com/eCaleb/flutter-security-analyzer.git
+cd flutter-security-analyzer
+pip install -e ".[dev]"
+```
 
 ## Usage
 
@@ -74,8 +74,8 @@ The scanner has no runtime dependencies beyond the Python standard library (Pyth
 ```bash
 flutter-security-analyzer /path/to/flutter/project
 
-# or, without installing
-python src/main.py /path/to/flutter/project
+# or run it as a module
+python -m flutter_security_analyzer /path/to/flutter/project
 ```
 
 ### Output Formats
@@ -124,7 +124,7 @@ flutter-security-analyzer ./my_flutter_app -v
 ```yaml
 - name: Security Scan
   run: |
-    pip install git+https://github.com/eCaleb/flutter-security-analyzer
+    pip install flutter-security-analyzer
     flutter-security-analyzer ./lib -f json -o security-results.json
 ```
 
@@ -149,8 +149,9 @@ docker run -v $(pwd):/scan flutter-security-analyzer /scan
 
 ```
 flutter-security-analyzer/
-├── src/
+├── src/flutter_security_analyzer/
 │   ├── main.py              # CLI entry point
+│   ├── __main__.py          # python -m flutter_security_analyzer
 │   ├── core/
 │   │   ├── scanner.py       # Main scanner logic
 │   │   └── config.py        # Configuration handling
@@ -176,8 +177,8 @@ flutter-security-analyzer/
 ├── samples/                 # Deliberately vulnerable and secure sample apps
 ├── .github/workflows/
 ├── Dockerfile
+├── pyproject.toml
 ├── requirements.txt
-├── setup.py
 └── README.md
 ```
 

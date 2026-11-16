@@ -16,11 +16,12 @@ import json
 from pathlib import Path
 from typing import Optional
 
-from core.scanner import SecurityScanner
-from core.config import ScannerConfig
-from reporters.console_reporter import ConsoleReporter
-from reporters.json_reporter import JsonReporter
-from reporters.html_reporter import HtmlReporter
+from flutter_security_analyzer import __version__
+from flutter_security_analyzer.core.scanner import SecurityScanner
+from flutter_security_analyzer.core.config import ScannerConfig
+from flutter_security_analyzer.reporters.console_reporter import ConsoleReporter
+from flutter_security_analyzer.reporters.json_reporter import JsonReporter
+from flutter_security_analyzer.reporters.html_reporter import HtmlReporter
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -85,7 +86,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         '--version',
         action='version',
-        version='%(prog)s 1.0.0'
+        version=f'%(prog)s {__version__}'
     )
     
     return parser.parse_args()
