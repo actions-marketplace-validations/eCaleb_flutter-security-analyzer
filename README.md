@@ -17,8 +17,8 @@ This tool is developed as part of an MSc Cybersecurity final year project at the
 
 - **Pattern-Based Detection**: Regex-based vulnerability detection for Dart code
 - **MASVS Compliance Mapping**: All findings mapped to OWASP MASVS v2.1.0 controls
-- **Multiple Output Formats**: Console, JSON, and HTML reports
-- **CI/CD Integration**: Exit codes suitable for pipeline integration
+- **Multiple Output Formats**: Console, JSON, HTML and SARIF reports
+- **CI/CD Integration**: Exit codes for pipelines, and a GitHub Action that puts findings in GitHub code scanning
 - **26 Vulnerability Checks**: Covering all 8 MASVS categories
 
 ## Sample Report
@@ -89,6 +89,9 @@ flutter-security-analyzer ./my_flutter_app -f json -o results.json
 
 # HTML report
 flutter-security-analyzer ./my_flutter_app -f html -o report.html
+
+# SARIF 2.1.0, for GitHub code scanning and other security dashboards
+flutter-security-analyzer ./my_flutter_app -f sarif -o results.sarif
 ```
 
 ### Filter by Severity
@@ -119,7 +122,58 @@ flutter-security-analyzer ./my_flutter_app -v
 - `1`: High severity findings detected
 - `2`: Critical findings detected
 
-### GitHub Actions Example
+### GitHub Action
+
+The repository is also a GitHub Action. It scans your project and uploads the findings to GitHub code scanning, so they appear in the Security tab and on the affected lines of pull requests.
+
+```yaml
+name: Flutter security scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  security-events: write  # needed to upload results to code scanning
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: eCaleb/flutter-security-analyzer@v1.1.0
+        with:
+          path: .
+          fail-on: high
+```
+
+For supply-chain safety, pin the action to a full commit SHA rather than a tag. The scanner is installed from the action's own code, so the pin fixes the scanner version too.
+
+| Input | Default | Description |
+|---|---|---|
+| `path` | `.` | Flutter project directory or Dart file to scan, relative to the repository root |
+| `severity` | `low` | Lowest severity to report: `critical`, `high`, `medium`, `low` or `info` |
+| `masvs-categories` | all | Space-separated MASVS categories, for example `STORAGE CRYPTO` |
+| `config` | none | Path to a scanner configuration file |
+| `sarif-file` | `flutter-security-analyzer.sarif` | Where to write the SARIF report |
+| `upload-sarif` | `true` | Upload the report to code scanning. Needs `security-events: write` |
+| `category` | `flutter-security-analyzer` | Code scanning category. Use a different one for each path if you scan several |
+| `fail-on` | `high` | Fail the step when findings at or above this severity are reported, or `never`. Checked after the upload |
+
+| Output | Description |
+|---|---|
+| `sarif-file` | Path to the SARIF report |
+| `findings` | Total number of findings |
+| `critical`, `high` | Number of critical and high findings |
+
+Code scanning is free for public repositories. Private repositories need GitHub Code Security. To use the report elsewhere without uploading it, set `upload-sarif: 'false'` and keep the file as an artifact.
+
+### Other CI systems
 
 ```yaml
 - name: Security Scan
@@ -171,11 +225,13 @@ flutter-security-analyzer/
 │   └── reporters/
 │       ├── console_reporter.py
 │       ├── json_reporter.py
-│       └── html_reporter.py
+│       ├── html_reporter.py
+│       └── sarif_reporter.py # SARIF 2.1.0 for code scanning
 ├── tests/
 ├── docs/images/             # README screenshots
 ├── samples/                 # Deliberately vulnerable and secure sample apps
 ├── .github/workflows/
+├── action.yml               # GitHub Action
 ├── Dockerfile
 ├── pyproject.toml
 ├── requirements.txt
